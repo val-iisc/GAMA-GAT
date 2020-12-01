@@ -126,7 +126,7 @@ def GAMA_FW(model,data,target,eps,gamma,steps,SCHED,drop,w_reg,lin):
     
     
 STEPS = 100
-RR = 1
+RR = 5
     
 SCHED = [60,85]
 drop = 5    
