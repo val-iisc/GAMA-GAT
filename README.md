@@ -5,8 +5,8 @@ This repository contains code for the implementation of our paper titled "Guided
 The proposed Guided Adversarial Margin Attack (GAMA) utilizes function mapping of the clean image to guide the generation of adversaries, thereby resulting in stronger attacks.
 The following plot shows the Robust Accuracy (%) of different attacks against multiple random restarts. Evaluations are performed on TRADES WideResNet-34 model [1] for CIFAR-10, PGD-AT ResNet-50 model [2] for ImageNet (first 1000 samples), and TRADES SmallCNN model [1] for MNIST.
 
-<p align="center">
-    <img src="https://github.com/GaurangSriramanan/GAMA-GAT/blob/main/GAMA_accuracy_vs_rr.pdf" width="800"\>
+<p align="left">
+    <img src="https://github.com/GaurangSriramanan/GAMA-GAT/blob/main/GAMA_Robustness_vs_RR.PNG" width="1000"\>
 </p>
 
 
