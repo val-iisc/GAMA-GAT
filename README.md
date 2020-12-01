@@ -6,7 +6,7 @@ The proposed Guided Adversarial Margin Attack (GAMA) utilizes function mapping o
 The following plot shows the Robust Accuracy (%) of different attacks against multiple random restarts. Evaluations are performed on TRADES WideResNet-34 model [1] for CIFAR-10, PGD-AT ResNet-50 model [2] for ImageNet (first 1000 samples), and TRADES SmallCNN model [1] for MNIST.
 
 <p align="center">
-    <img src="https://github.com/GaurangSriramanan/GAMA-GAT/blob/master/GAMA_accuracy_vs_rr.pdf" width="800"\>
+    <img src="https://github.com/GaurangSriramanan/GAMA-GAT/blob/main/GAMA_accuracy_vs_rr.pdf" width="800"\>
 </p>
 
 
