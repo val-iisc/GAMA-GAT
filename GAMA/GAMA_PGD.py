@@ -140,7 +140,7 @@ def GAMA_PGD(model,data,target,eps,eps_iter,bounds,steps,w_reg,lin,SCHED,drop):
     return data + noise
     
 STEPS = 100
-RR = 1
+RR = 5
 SCHED = [60,85]
 drop = 10    
 lin = 25
