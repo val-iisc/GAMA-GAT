@@ -8,14 +8,19 @@ This repository contains code for the implementation of our paper titled "Guided
  - We demonstrate that Projected Gradient Descent based optimization (GAMA-PGD) leads to stronger attacks when a large number of steps (100) can be used, thereby making it suitable for defense evaluation; whereas, Frank-Wolfe based optimization (GAMA-FW) leads to stronger attacks when the number of steps used for attack are severely restricted (10), thereby making it useful for adversary generation during multi-step adversarial training.
  - We propose **Guided Adversarial Training (GAT)**, which achieves state-of-the-art results amongst existing single-step adversarial defenses. We demonstrate that the proposed defense can scale to large network sizes and to large scale datasets such as ImageNet-100.
     
- # Guided Adversarial Margin Attack 
+# Guided Adversarial Margin Attack 
 
 The proposed Guided Adversarial Margin Attack (GAMA) utilizes function mapping of the clean image to guide the generation of adversaries, thereby resulting in stronger attacks.
+
 The following plot shows the Robust Accuracy (%) of different attacks against multiple random restarts. Evaluations are performed on TRADES WideResNet-34 model [2] for CIFAR-10, PGD-AT ResNet-50 model [3] for ImageNet (first 1000 samples), and TRADES SmallCNN model [2] for MNIST.
 
 <p align="left">
     <img src="https://github.com/GaurangSriramanan/GAMA-GAT/blob/main/GAMA_Robustness_vs_RR.PNG" width="1000"\>
 </p>
+
+# Guided Adversarial Training (Single-Step Adversarial Defense)
+
+The proposed defense GAT achieves state-of-the-art performance amongst single-step defenses by utilizing the proposed relaxation term for both attack generation and training.
 
 
 # Environment Settings
