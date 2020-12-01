@@ -29,7 +29,6 @@ for  i in range(len(opts)):
     #Experiment name
     if opt=='-EXP_NAME':
         EXP_NAME = str(arg)
-        LOG_FILE_NAME = 'log/'+str(arg)+'.txt'
         print('EXP_NAME:',EXP_NAME)
     if opt=='-MODEL':
         MODEL = str(arg)
