@@ -22,6 +22,9 @@ The following plot shows the Robust Accuracy (%) of different attacks against mu
 
 The proposed defense GAT achieves state-of-the-art performance amongst single-step defenses by utilizing the proposed relaxation term for both attack generation and training.
 
+<p align="left">
+    <img src="https://github.com/GaurangSriramanan/GAMA-GAT/blob/main/GAT_results.PNG" width="1000"\>
+</p>
 
 # Environment Settings
 + Python: 3.6.9
