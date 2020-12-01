@@ -1,6 +1,12 @@
-# Guided Adversarial Attack for Evaluating and Enhancing Adversarial Defenses
-
 This repository contains code for the implementation of our paper titled "Guided Adversarial Attack for Evaluating and Enhancing Adversarial Defenses", accepted for a Spotlight presentation at NeurIPS 2020. Our paper is available on arXiv [here](https://arxiv.org/abs/2011.14969).
+
+
+ - We propose **Guided Adversarial Margin Attack(GAMA)**, which achieves state-of-the-art performance across multiple defenses for a single attack and across multiple random restarts.
+ - We introduce a multi-targeted variant GAMA-MT, which achieves improved performance compared to methods that utilize multiple targeted attacks to improve attack strength. 
+ - We demonstrate that Projected Gradient Descent based optimization (GAMA-PGD) leads to stronger attacks when a large number of steps (100) can be used, thereby making it suitable for defense evaluation; whereas, Frank-Wolfe based optimization (GAMA-FW) leads to stronger attacks when the number of steps used for attack are severely restricted (10), thereby making it useful for adversary generation during multi-step adversarial training.
+ - We propose **Guided Adversarial Training (GAT)**, which achieves state-of-the-art results amongst existing single-step adversarial defenses. We demonstrate that the proposed defense can scale to large network sizes and to large scale datasets such as ImageNet-100.
+    
+ # Guided Adversarial Margin Attack 
 
 The proposed Guided Adversarial Margin Attack (GAMA) utilizes function mapping of the clean image to guide the generation of adversaries, thereby resulting in stronger attacks.
 The following plot shows the Robust Accuracy (%) of different attacks against multiple random restarts. Evaluations are performed on TRADES WideResNet-34 model [1] for CIFAR-10, PGD-AT ResNet-50 model [2] for ImageNet (first 1000 samples), and TRADES SmallCNN model [1] for MNIST.
