@@ -15,6 +15,7 @@ import numpy as np
 import time
 import random
 #import scipy.stats as stats
+
 ##############################parse inputs###################
 import getopt
 import sys
@@ -80,8 +81,9 @@ for  i in range(len(opts)):
         print('Step Mult. factor:',mul)
     
 
-###################################### Augmented Mini-batch #######################################
-def FGSM_Attack_step(model,loss,image,target,eps=0.1,bounds=[0,1],GPU=0,steps=30): 
+###################################### Function Definitions #######################################
+
+def Guided_Attack(model,loss,image,target,eps=0.3,bounds=[0,1],steps=1,P_out=[],l2_reg=15): 
     tar = Variable(target.cuda())
     img = image.cuda()
     eps = eps/steps 
@@ -89,13 +91,13 @@ def FGSM_Attack_step(model,loss,image,target,eps=0.1,bounds=[0,1],GPU=0,steps=30
         img = Variable(img,requires_grad=True)
         zero_gradients(img) 
         out  = model(img)
-        cost = loss(out,tar)
+        R_out = nn.Softmax(dim=1)(out)
+        cost = loss(out,tar) + l2_reg*(((P_out - R_out)**2.0).sum(1)).mean(0) 
         cost.backward()
         per = eps * torch.sign(img.grad.data)
         adv = img.data + per.cuda() 
         img = torch.clamp(adv,bounds[0],bounds[1])
     return img
-    
 
 def execfile(filepath):
     with open(filepath, 'rb') as file:
@@ -118,12 +120,12 @@ TEST_BATCH_SIZE  = 1024
 BASE_LR          = 1e-2
 MAX_ITER         = (MAX_EPOCHS*50000)/TRAIN_BATCH_SIZE
 MODEL_PREFIX     = 'models/mnist_'+EXP_NAME+'_epoch_'
-#######################################load network################################################
+####################################### load network ################################################
 execfile('MNIST_Network.py')
 model = MNIST_Network()
 model.cuda()
 model.train()
-######################################Load data ###################################################
+###################################### load data ###################################################
 transform = transforms.Compose([
         transforms.ToTensor(),])
 
@@ -165,28 +167,31 @@ for epoch in range(epochs):
     for data, target in train_loader:
         data   = Variable(data).cuda()
         target = Variable(target).cuda()
+        
+        out  = model(data)
+        P_out = nn.Softmax(dim=1)(out)
     
-        qdata = data + ((B_val)*torch.sign(torch.tensor([0.5]) - torch.rand_like(data)).cuda())
-        qdata = torch.clamp(qdata,0.0,1.0)
+        adv_data = data + ((B_val)*torch.sign(torch.tensor([0.5]) - torch.rand_like(data)).cuda())
+        adv_data = torch.clamp(adv_data,0.0,1.0)
         
         model.eval()
-        qadv = FGSM_Attack_step(model,loss,qdata,target,eps=Feps,steps=1)
         
-        delta = qadv - data
+        adv_data = Guided_Attack(model,loss,adv_data,target,eps=Feps,steps=1,P_out=P_out,l2_reg=l2_reg)
+
+        delta = adv_data - data
         delta = torch.clamp(delta,-0.3,0.3)
-        qadv = data+delta
-        qadv = torch.clamp(qadv,0.0,1.0)
+        adv_data = data+delta
+        adv_data = torch.clamp(adv_data,0.0,1.0)
         
         model.train()
         optimizer.zero_grad()
-        qout  = model(qadv)
+        adv_out  = model(adv_data)
         out  = model(data)
         
-        Q_out = nn.Softmax(dim=1)(qout)
+        Q_out = nn.Softmax(dim=1)(adv_out)
         P_out = nn.Softmax(dim=1)(out)
         
         '''LOSS COMPUTATION'''
-        
         
         closs = loss(out,target)
         
@@ -229,54 +234,19 @@ for epoch in range(epochs):
 model.eval()
 
 
-def PGD(model,loss,data,target,eps=0.1,eps_iter=0.1,bounds=[],steps=1):
-    """
-    model
-    loss : loss used for training
-    data : input to network
-    target : ground truth label corresponding to data
-    eps : perturbation srength added to image
-    eps_iter
-    """
-    #Raise error if in training mode
-    if model.training:
-        assert 'Model is in  training mode'
+def FGSM_Attack_step(model,loss,image,target,eps=0.1,bounds=[0,1],GPU=0,steps=30): 
     tar = Variable(target.cuda())
-    data = data.cuda()
-    B,C,H,W = data.size()
-    noise  = torch.FloatTensor(np.random.uniform(-eps,eps,(B,C,H,W))).cuda()
-    noise  = torch.clamp(noise,-eps,eps)
+    img = image.cuda()
+    eps = eps/steps 
     for step in range(steps):
-        # convert data and corresponding into cuda variable
-        img = data + noise
         img = Variable(img,requires_grad=True)
-        # make gradient of img to zeros
         zero_gradients(img) 
-        # forward pass
         out  = model(img)
-        #compute loss using true label
         cost = loss(out,tar)
-        #backward pass
         cost.backward()
-        #get gradient of loss wrt data
-        per =  torch.sign(img.grad.data)
-        #convert eps 0-1 range to per channel range 
-        per[:,0,:,:] = (eps_iter * (bounds[0,1] - bounds[0,0])) * per[:,0,:,:]
-        if(per.size(1)>1):
-            per[:,1,:,:] = (eps_iter * (bounds[1,1] - bounds[1,0])) * per[:,1,:,:]
-            per[:,2,:,:] = (eps_iter * (bounds[2,1] - bounds[2,0])) * per[:,2,:,:]
-        #  ascent
-        adv = img.data + per.cuda()
-        #clip per channel data out of the range
-        img.requires_grad =False
-        img[:,0,:,:] = torch.clamp(adv[:,0,:,:],bounds[0,0],bounds[0,1])
-        if(per.size(1)>1):
-            img[:,1,:,:] = torch.clamp(adv[:,1,:,:],bounds[1,0],bounds[1,1])
-            img[:,2,:,:] = torch.clamp(adv[:,2,:,:],bounds[2,0],bounds[2,1])
-        img = img.data
-        noise = img - data
-        noise  = torch.clamp(noise,-eps,eps)
-    img = data + noise
+        per = eps * torch.sign(img.grad.data)
+        adv = img.data + per.cuda() 
+        img = torch.clamp(adv,bounds[0],bounds[1])
     return img
 
 
@@ -383,7 +353,7 @@ for eps in np.arange(0.05,0.301,0.05):
     log_file.close()
 ##################################### MSPGD #############################################
 
-def MSPGD(model,loss,data,target,eps=0.1,eps_iter=0.1,bounds=[],steps=[7,20,50,100,500]):
+def MSPGD(model,loss,data,target,eps=0.3,eps_iter=0.01,bounds=[],steps=[7,20,50,100,500]):
     """
     model
     loss : loss used for training
@@ -440,7 +410,7 @@ def MSPGD(model,loss,data,target,eps=0.1,eps_iter=0.1,bounds=[],steps=[7,20,50,1
 
 ##################################### PGD, steps=[20,40,100,500] #############################################
 log_file = open(EVAL_LOG_NAME,'a')
-msg = '##################### PGD: steps=[20,40,100,500],eps_iter=2/255 ####################\n'
+msg = '##################### PGD: steps=[20,40,100,500],eps_iter=0.01 ####################\n'
 log_file.write(msg)
 log_file.close()
 all_steps = [20,40,100,500] 
@@ -464,4 +434,114 @@ for j in range(num_steps):
     msg = 'eps,'+str(eps)+',steps,'+str(all_steps[j])+',Acc,'+str(acc_arr[j])+'\n'
     log_file.write(msg)
     log_file.close()
+    
+    
+    
+def max_margin_loss(x,y):
+    B = y.size(0)
+    corr = x[range(B),y]
 
+    x_new = x - 1000*torch.eye(10)[y].cuda()
+    tar = x[range(B),x_new.argmax(dim=1)]
+    loss = tar - corr
+    loss = torch.mean(loss)
+    
+    return loss
+
+
+def GAMA_PGD(model,data,target,eps,eps_iter,bounds,steps,w_reg,lin,SCHED,drop):
+
+    #Raise error if in training mode
+    if model.training:
+        assert 'Model is in  training mode'
+    tar = Variable(target.cuda())
+    data = data.cuda()
+    B,C,H,W = data.size()
+    noise  = torch.FloatTensor(np.random.uniform(-eps,eps,(B,C,H,W))).cuda()
+    noise  = eps*torch.sign(noise)
+    img_arr = []
+    W_REG = w_reg
+    orig_img = data+noise
+    orig_img = Variable(orig_img,requires_grad=True)
+    for step in range(steps[-1]):
+        # convert data and corresponding into cuda variable
+        img = data + noise
+        img = Variable(img,requires_grad=True)
+        
+        if step in SCHED:
+            eps_iter /= drop
+        
+        # make gradient of img to zeros
+        zero_gradients(img) 
+        # forward pass        
+        orig_out = model(orig_img)
+        P_out = nn.Softmax(dim=1)(orig_out)
+        
+        out  = model(img)
+        Q_out = nn.Softmax(dim=1)(out)
+        #compute loss using true label
+        if step <= lin:
+            cost =  W_REG*((P_out - Q_out)**2.0).sum(1).mean(0) + max_margin_loss(Q_out,tar)
+            W_REG -= w_reg/lin
+        else:
+            cost = max_margin_loss(Q_out,tar)
+        #backward pass
+        cost.backward()
+        #get gradient of loss wrt data
+        per =  torch.sign(img.grad.data)
+        #convert eps 0-1 range to per channel range 
+        per[:,0,:,:] = (eps_iter * (bounds[0,1] - bounds[0,0])) * per[:,0,:,:]
+        if(per.size(1)>1):
+            per[:,1,:,:] = (eps_iter * (bounds[1,1] - bounds[1,0])) * per[:,1,:,:]
+            per[:,2,:,:] = (eps_iter * (bounds[2,1] - bounds[2,0])) * per[:,2,:,:]
+        #  ascent
+        adv = img.data + per.cuda()
+        #clip per channel data out of the range
+        img.requires_grad =False
+        img[:,0,:,:] = torch.clamp(adv[:,0,:,:],bounds[0,0],bounds[0,1])
+        if(per.size(1)>1):
+            img[:,1,:,:] = torch.clamp(adv[:,1,:,:],bounds[1,0],bounds[1,1])
+            img[:,2,:,:] = torch.clamp(adv[:,2,:,:],bounds[2,0],bounds[2,1])
+        img = img.data
+        noise = img - data
+        noise  = torch.clamp(noise,-eps,eps)
+        
+        for j in range(len(steps)):
+            if step == steps[j]-1:
+                img_tmp = data + noise
+                img_arr.append(img_tmp)
+                break
+    return img_arr
+   
+
+
+SCHED = [50,75]
+drop = 10    
+lin = 50
+w_reg = 5
+##################################### GAMA PGD, steps=[60,85,90,100] #############################################
+log_file = open(EVAL_LOG_NAME,'a+')
+msg = '##################### Gama-PGD Wreg5 lin50, drop by 10 at [50,75]: steps=[60,85,90,100], eps_iter_init=0.3  ####################\n'
+log_file.write(msg)
+log_file.close()
+all_steps = [60,85,90,100]
+num_steps = len(all_steps)
+eps = 0.3
+i = 0
+acc_arr = torch.zeros((num_steps))
+for data, target in test_loader:
+    adv_arr = GAMA_PGD(model,data,target,eps=eps,eps_iter=0.3,bounds=np.array([[0,1],[0,1],[0,1]]),steps=all_steps,w_reg=w_reg,lin=lin,SCHED=SCHED,drop=drop)
+    target = Variable(target).cuda()
+    for j in range(num_steps):
+        data   = Variable(adv_arr[j]).cuda()
+        out = model(data)
+        prediction = out.data.max(1)[1] 
+        acc_arr[j] = acc_arr[j] + prediction.eq(target.data).sum()
+    i = i + 1
+print(acc_arr)
+for j in range(num_steps):
+    acc_arr[j] = (acc_arr[j].item()*1.0) / (test_size) * 100
+    log_file = open(EVAL_LOG_NAME,'a+')
+    msg = 'eps,'+str(eps)+',steps,'+str(all_steps[j])+',Acc,'+str(acc_arr[j])+'\n'
+    log_file.write(msg)
+    log_file.close()
