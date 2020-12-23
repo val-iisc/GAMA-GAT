@@ -6,7 +6,7 @@ This repository contains code for the implementation of our paper titled "Guided
  - We propose **Guided Adversarial Margin Attack(GAMA)**, which achieves state-of-the-art performance across multiple defenses for a single attack and across multiple random restarts.
  - We introduce a multi-targeted variant GAMA-MT, which achieves improved performance compared to methods that utilize multiple targeted attacks to improve attack strength [1]. 
  - We demonstrate that Projected Gradient Descent based optimization (GAMA-PGD) leads to stronger attacks when a large number of steps (100) can be used, thereby making it suitable for defense evaluation; whereas, Frank-Wolfe based optimization (GAMA-FW) leads to stronger attacks when the number of steps used for attack are severely restricted (10), thereby making it useful for adversary generation during multi-step adversarial training.
- - We propose **Guided Adversarial Training (GAT)**, which achieves state-of-the-art results amongst existing single-step adversarial defenses. We demonstrate that the proposed defense can scale to large network sizes and to large scale datasets such as ImageNet-100.
+ - We propose **Guided Adversarial Training (GAT)**, which achieves state-of-the-art results amongst existing single-step adversarial defenses. We demonstrate that the proposed defense can scale to large network sizes and to large scale datasets such as ImageNet-100. Trained model weights can be found [here](https://drive.google.com/drive/folders/17t2lgpMIuWztDeCCcFD_37Nj0VNpTgXh?usp=sharing).
     
 # Guided Adversarial Margin Attack 
 
@@ -20,7 +20,8 @@ The following plot shows the Robust Accuracy (%) of different attacks against mu
 
 # Guided Adversarial Training (Single-Step Adversarial Defense)
 
-The proposed defense GAT achieves state-of-the-art performance amongst single-step defenses by utilizing the proposed relaxation term for both attack generation and training.
+The proposed defense GAT achieves state-of-the-art performance amongst single-step defenses by utilizing the proposed relaxation term for both attack generation and training. Trained model weights for all three datasets can be found [here](https://drive.google.com/drive/folders/17t2lgpMIuWztDeCCcFD_37Nj0VNpTgXh?usp=sharing).
+
 
 <p align="left">
     <img src="https://github.com/GaurangSriramanan/GAMA-GAT/blob/main/GAT_results.PNG" width="1000"\>
@@ -31,6 +32,7 @@ The proposed defense GAT achieves state-of-the-art performance amongst single-st
 + PyTorch: 1.3.1
 + TorchVision: 0.4.2
 + Numpy: 1.19.0
++ TensorboardX: 1.5
 
 # References
 
