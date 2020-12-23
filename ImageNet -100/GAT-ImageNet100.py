@@ -1,3 +1,9 @@
+""" 
+
+This code is adapted from the following: https://github.com/pytorch/examples/tree/master/imagenet
+
+"""
+
 import argparse
 import os
 import random
@@ -31,6 +37,9 @@ def execfile(filepath):
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
+    
+if not os.path.isdir('./models'):
+    os.mkdir('./models')
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('data', metavar='DIR',
@@ -159,7 +168,7 @@ def main():
         
         
         print("\n\n\n################### PGD-"+str(steps)+" EVAL ###################\n\n")
-        print("Starting PGD Evalutaion from Epoch",args.START_EVAL)
+        print("Starting PGD Evaluation from Epoch",args.START_EVAL)
         for epoch in range(args.START_EVAL,args.epochs):
             args.model = 'models/'+args.EXP_NAME+'_checkpoint_'+str(epoch)+'.pth.tar'
             main_pgd_worker(args.gpu, ngpus_per_node, args)
@@ -168,7 +177,7 @@ def main():
     print("\n\n\nPGD Acc",PGD_Acc)
     P = np.array(PGD_Acc)
     best_epoch = args.START_EVAL+P.argmax()
-    msg = '\n\n Best Epoch:'+str(best_epoch)+' ,  Clean Valid Acc:'+str(Clean_Acc[best_epoch])+' ,     PGD Acc:'+str(P.max())+'\n'
+    msg = '\n\n Best Epoch:'+str(best_epoch)+' ,   PGD Acc:'+str(P.max())+'\n'
     print(msg)
 
 
@@ -316,7 +325,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 'state_dict': model.state_dict(),
                 'best_acc1': best_acc1,
                 'optimizer' : optimizer.state_dict(),
-            }, is_best, filename = 'models/'+str(args.EXP_NAME)+'_checkpoint_'+str(epoch)+'.pth.tar')
+            }, filename = 'models/'+str(args.EXP_NAME)+'_checkpoint_'+str(epoch)+'.pth.tar')
             
 
 
@@ -424,6 +433,28 @@ def FGSM_Attack_step(args,model,loss,image,target,eps=0.1,bounds=[0,1],GPU=0,ste
         img = torch.clamp(adv,bounds[0],bounds[1])
     return img
     
+    
+    
+def Guided_Attack(args,model,loss,image,target,eps=8/255,bounds=[0,1],steps=1,data=[],l2_reg=5,alt=1,B=64): 
+    tar = Variable(target.cuda(args.gpu, non_blocking=True))
+    img = image.cuda(args.gpu, non_blocking=True)
+    eps = eps/steps 
+    for step in range(steps):
+        img = Variable(img,requires_grad=True)
+        zero_gradients(img) 
+        out  = model(data)
+        rout  = model(img)
+
+        P_out = nn.Softmax(dim=1)(out)
+        R_out = nn.Softmax(dim=1)(rout)
+        cost = loss(rout,tar) + alt*l2_reg*(((P_out - R_out)**2.0).sum(1)).mean(0) 
+        cost.backward()
+        per = eps * torch.sign(img.grad.data)
+        adv = img.data + per.cuda(args.gpu, non_blocking=True) 
+    return adv
+    
+    
+    
 def pgd(args,model,loss,data,target,eps,eps_iter,bounds=[],steps=1):
     """
     model
@@ -501,25 +532,28 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
         
         images = images.cuda()
+        B,C,H,W = images.size()
         target = target.cuda(args.gpu, non_blocking=True)
         
         N = torch.sign(torch.tensor([0.5]).cuda() - torch.rand_like(images).cuda()).cuda()
-        qdata = images + (args.Bval/255.0)*N
-        qdata = torch.clamp(qdata,0.0,1.0)
+        adv_data = images + (args.Bval/255.0)*N
+        adv_data = torch.clamp(adv_data,0.0,1.0)
         
         model.eval()
-        qadv = FGSM_Attack_step(args,model,criterion,qdata,target,eps=args.Feps/255.0,steps=1)
         
-        delta = qadv - images
+        alt = (i%2)
+        adv_data = Guided_Attack(args,model,criterion,adv_data,target,eps=args.Feps/255.0,steps=1,data=images.detach(),l2_reg=args.l2_reg,alt=alt,B=B)
+        
+        delta = adv_data - images
         delta = torch.clamp(delta,-8.0/255.0,8.0/255)
-        qadv = images+delta
-        qadv = torch.clamp(qadv,0.0,1.0)
+        adv_data = images+delta
+        adv_data = torch.clamp(adv_data,0.0,1.0)
         
         model.train()
-        qout  = model(qadv)
+        adv_out  = model(adv_data)
         out  = model(images)
         
-        Q_out = nn.Softmax(dim=1)(qout)
+        Q_out = nn.Softmax(dim=1)(adv_out)
         P_out = nn.Softmax(dim=1)(out)
         
         '''LOSS COMPUTATION'''
@@ -638,10 +672,8 @@ def pgdvalidate(val_loader, model, criterion, args):
     return top1.avg
 
 
-def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
+def save_checkpoint(state, filename='checkpoint.pth.tar'):
     torch.save(state, filename)
-    if is_best:
-        shutil.copyfile(filename, 'best_model/model_best.pth.tar')
 
 
 class AverageMeter(object):
